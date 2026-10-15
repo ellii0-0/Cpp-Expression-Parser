@@ -55,6 +55,21 @@ public:
         void print() const override;                    // Sobrecarga do print para operações binárias
 };
 
+// Classe de um nó de operação unária (+ e =)
+class UnOp : public Expr {
+private:
+        char op;                        // Caractere da operação
+        ExprPtr rhs;                    // Lado direito
+public:
+        // Construtor simples com operações de std::move de std::unique_ptr
+        UnOp(char op, ExprPtr rhs)
+                : op(op), rhs(std::move(rhs)) {}
+
+        char get_op() const { return op; }              // Getter do caractere da operação
+        const Expr &get_rhs() const { return *rhs; }    // Getter da referência do lado direito
+        void print() const override;                    // Sobrecarga do print para operações binárias
+};
+
 // Classe de chamada de função (sqrt(x), cos(2*x), atan2(y,x), ...)
 class Call : public Expr {
 private:
