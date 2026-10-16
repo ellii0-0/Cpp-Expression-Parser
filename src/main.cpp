@@ -26,7 +26,7 @@ int main()
                         ExprPtr expr = parse_text(input);
 
                         if (const auto *definition = dynamic_cast<const FuncDef *>(expr.get())) {
-                                functions.add(*definition);
+                                functions.add(*definition, variables);
                                 std::cout << "Função cadastrada: " << definition->get_name() << '\n';
                         } else {
                                 std::cout << std::setprecision(15)

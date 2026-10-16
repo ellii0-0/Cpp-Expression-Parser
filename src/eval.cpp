@@ -1,6 +1,7 @@
 #include "eval.h"
 
 #include <cmath>
+#include <unordered_map>
 #include <utility>
 
 namespace {
@@ -78,6 +79,9 @@ FunctionTable::FunctionTable()
         unary("ln", static_cast<double (*)(double)>(std::log));
         unary("log", static_cast<double (*)(double)>(std::log));
         unary("log10", static_cast<double (*)(double)>(std::log10));
+        unary("asin", static_cast<double (*)(double)>(std::asin));
+        unary("acos", static_cast<double (*)(double)>(std::acos));
+        unary("atan", static_cast<double (*)(double)>(std::atan));
 
         functions.emplace("pow", Function{
                 2, [](const std::vector<double> &args) {
@@ -105,7 +109,7 @@ const FunctionTable::Function &FunctionTable::get(const std::string &name) const
         return it->second;
 }
 
-void FunctionTable::validate(const FuncDef &definition) const
+void FunctionTable::validate(const FuncDef &definition, const Variables &variables) const
 {
         if (contains(definition.get_name()))
                 throw EvalError("Função já cadastrada: '" + definition.get_name() + "'");
@@ -117,11 +121,12 @@ void FunctionTable::validate(const FuncDef &definition) const
         }
 
         // A função nova ainda não está na tabela: autorreferência é rejeitada.
-        validate_body(definition.get_body(), params);
+        validate_body(definition.get_body(), params, variables);
 }
 
 void FunctionTable::validate_body(
-        const Expr &expr, const std::unordered_set<std::string> &params) const
+        const Expr &expr, const std::unordered_set<std::string> &params,
+        const std::unordered_map<std::string, double> &variables) const
 {
         if (const auto *node = dynamic_cast<const Number *>(&expr)) {
                 checked(node->get_val());
@@ -129,7 +134,8 @@ void FunctionTable::validate_body(
         }
 
         if (const auto *node = dynamic_cast<const Variable *>(&expr)) {
-                if (params.find(node->get_name()) == params.end())
+                if (variables.find(node->get_name()) == variables.end() &&
+                    params.find(node->get_name()) == params.end())
                         throw EvalError("Variável livre não permitida: '" +
                                         node->get_name() + "'");
                 return;
@@ -138,15 +144,15 @@ void FunctionTable::validate_body(
         if (const auto *node = dynamic_cast<const UnOp *>(&expr)) {
                 if (node->get_op() != '+' && node->get_op() != '-')
                         throw EvalError("Operador unário inválido");
-                validate_body(node->get_rhs(), params);
+                validate_body(node->get_rhs(), params, variables);
                 return;
         }
 
         if (const auto *node = dynamic_cast<const BinOp *>(&expr)) {
                 if (std::string("+-*/^").find(node->get_op()) == std::string::npos)
                         throw EvalError("Operador binário inválido");
-                validate_body(node->get_lhs(), params);
-                validate_body(node->get_rhs(), params);
+                validate_body(node->get_lhs(), params, variables);
+                validate_body(node->get_rhs(), params, variables);
                 return;
         }
 
@@ -156,7 +162,7 @@ void FunctionTable::validate_body(
                 for (const auto &arg : node->get_args()) {
                         if (!arg)
                                 throw EvalError("Argumento nulo na árvore");
-                        validate_body(*arg, params);
+                        validate_body(*arg, params, variables);
                 }
                 return;
         }
@@ -164,9 +170,9 @@ void FunctionTable::validate_body(
         throw EvalError("Tipo de expressão inválido no corpo da função");
 }
 
-void FunctionTable::add(const FuncDef &definition)
+void FunctionTable::add(const FuncDef &definition, Variables &variables)
 {
-        validate(definition);
+        validate(definition, variables);
 
         auto copy = std::make_unique<FuncDef>(
                 definition.get_name(), definition.get_params(),
@@ -244,7 +250,15 @@ double eval(const Expr &expr, const FunctionTable &functions,
                                 throw EvalError("Argumento nulo na árvore");
                         args.push_back(eval(*arg, functions, variables));
                 }
-                return functions.call(node->get_name(), args);
+                if (function.native)
+                        return functions.call(node->get_name(), args);
+
+                Variables locals = variables;
+                const auto &params = function.definition->get_params();
+                for (std::size_t i = 0; i < params.size(); i++)
+                        locals.insert_or_assign(params[i], checked(args[i]));
+
+                return eval(function.definition->get_body(), functions, locals);
         }
 
         if (dynamic_cast<const FuncDef *>(&expr))

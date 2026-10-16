@@ -33,10 +33,10 @@ public:
         bool contains(const std::string &name) const;
 
         // Valida a definição de função. Lança EvalError se inválida.
-        void validate(const FuncDef &definition) const;
+        void validate(const FuncDef &definition, const Variables &variables) const;
 
         // Valida e guarda uma cópia independente da árvore.
-        void add(const FuncDef &definition);
+        void add(const FuncDef &definition, Variables &variables);
 
         double call(const std::string &name,
                     const std::vector<double> &args) const;
@@ -45,7 +45,8 @@ private:
         std::unordered_map<std::string, Function> functions;
 
         void validate_body(const Expr &expr,
-                           const std::unordered_set<std::string> &params) const;
+                           const std::unordered_set<std::string> &params,
+                           const Variables &variables) const;
 };
 
 // calcula o valor da expressão. Lança EvalError se houver erro.
