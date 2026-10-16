@@ -12,6 +12,7 @@ double checked(double value)
                 throw EvalError("Resultado fora do domínio dos números reais");
         if (!std::isfinite(value))
                 throw EvalError("Resultado não finito ou fora do intervalo de double");
+        
         return value;
 }
 
@@ -43,11 +44,13 @@ ExprPtr clone(const Expr &expr)
 
         if (const auto *node = dynamic_cast<const Call *>(&expr)) {
                 Args args;
+                
                 for (const auto &arg : node->get_args()) {
                         if (!arg)
                                 throw EvalError("Argumento nulo na árvore");
                         args.push_back(clone(*arg));
                 }
+                
                 return std::make_unique<Call>(node->get_name(), std::move(args));
         }
 
@@ -104,8 +107,10 @@ bool FunctionTable::contains(const std::string &name) const
 const FunctionTable::Function &FunctionTable::get(const std::string &name) const
 {
         auto it = functions.find(name);
+
         if (it == functions.end())
                 throw EvalError("Função não encontrada: '" + name + "'");
+        
         return it->second;
 }
 
@@ -115,6 +120,7 @@ void FunctionTable::validate(const FuncDef &definition, const Variables &variabl
                 throw EvalError("Função já cadastrada: '" + definition.get_name() + "'");
 
         std::unordered_set<std::string> params;
+        
         for (const auto &param : definition.get_params()) {
                 if (!params.insert(param).second)
                         throw EvalError("Parâmetro repetido: '" + param + "'");
@@ -286,4 +292,14 @@ double Call::eval(const FunctionTable &functions, const Variables &variables) co
 double FuncDef::eval(const FunctionTable &, const Variables &) const
 {
         throw EvalError("Use FunctionTable::add() para cadastrar uma definição");
+}
+
+std::unordered_map<std::string, FunctionTable::Function>::const_iterator
+FunctionTable::begin() const {
+        return functions.begin();
+}
+
+std::unordered_map<std::string, FunctionTable::Function>::const_iterator
+FunctionTable::end() const {
+        return functions.end();
 }

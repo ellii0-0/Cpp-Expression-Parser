@@ -1,3 +1,4 @@
+#include "commands.h"
 #include "eval.h"
 #include "lexer.h"
 #include "parser.h"
@@ -16,9 +17,21 @@ int main()
         variables["pi"] = 3.14159265358979323846;
         variables["e"] = 2.71828182845904523536;
 
-        while (std::getline(std::cin, input)) {
-                if (input == "sair")
-                        break;
+        std::cout << "Digite \":ajuda\" para ver os comandos disponíveis.\n";
+
+        while (true) {
+                std::cout << "f> ";
+                std::getline(std::cin, input);
+
+                if (input[0] == ':') {
+                        bool exit = command(input, functions, variables);
+        
+                        if (exit)
+                                break;
+                        else
+                                continue;
+                }
+                        
                 if (input.find_first_not_of(" \t\r\n") == std::string::npos)
                         continue;
 
@@ -27,7 +40,9 @@ int main()
 
                         if (const auto *definition = dynamic_cast<const FuncDef *>(expr.get())) {
                                 functions.add(*definition, variables);
-                                std::cout << "Função cadastrada: " << definition->get_name() << '\n';
+                                std::cout << "Função cadastrada: ";
+                                definition->print();
+                                std::cout << '\n';
                         } else {
                                 std::cout << std::setprecision(15)
                                           << expr->eval(functions, variables) << '\n';

@@ -18,18 +18,6 @@ static std::unique_ptr<Expr> parse_expr(std::vector<Token> &tokens, int &pos, in
 static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos);
 static ExprPtr parse_primary(std::vector<Token> &tokens, int &pos);
 
-// Estrutura auxiliar para operações binárias
-struct OpInfo {
-        char op;                // Caractere da operação
-        int precedence;         // Precedência da operação (crescente)
-        bool right_assoc;       // Associatividade
-};
-
-// Precedência maior que +, -, * e / e menor que ^
-static const int UNARY_PRECEDENCE = 3;
-
-static bool binop_info(char op, OpInfo &info);
-
 ExprPtr parse_text(std::string src)
 {
         std::vector<Token> tokens = lexical_analysis(src);
@@ -167,7 +155,7 @@ static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos)
                 
                 ExprPtr rhs = parse_expr(tokens, pos, UNARY_PRECEDENCE);
 
-                std::unique_ptr<UnOp> unop = std::make_unique<UnOp>('-', std::move(rhs));
+                std::unique_ptr<UnOp> unop = std::make_unique<UnOp>(op, std::move(rhs));
                 return unop;
         } else {
                 // Parse das demais expressões
@@ -302,27 +290,4 @@ static Token &peek_token(std::vector<Token> &tokens, int pos)
 {
         Token &tok = tokens[pos];
         return tok;
-}
-
-static bool binop_info(char op, OpInfo &info)
-{
-        switch (op) {
-        case '+':
-                info = {'+', 1, false};
-                return true;
-        case '-':
-                info = {'-', 1, false};
-                return true;
-        case '*':
-                info = {'*', 2, false};
-                return true;
-        case '/':
-                info = {'/', 2, false};
-                return true;
-        case '^':
-                info = {'^', 4, true};
-                return true;
-        default:
-                return false;
-        }
 }

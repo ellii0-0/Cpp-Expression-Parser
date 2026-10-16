@@ -39,6 +39,9 @@ public:
         double call(const std::string &name,
                     const std::vector<double> &args) const;
 
+        std::unordered_map<std::string, Function>::const_iterator begin() const;
+        std::unordered_map<std::string, Function>::const_iterator end() const;
+
 private:
         std::unordered_map<std::string, Function> functions;
 
