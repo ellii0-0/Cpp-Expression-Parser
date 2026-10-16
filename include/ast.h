@@ -113,4 +113,17 @@ public:
         double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para definições (apenas uma exceção)
 };
 
+// Estrutura auxiliar para operações binárias
+struct OpInfo {
+        char op;                // Caractere da operação
+        int precedence;         // Precedência da operação (crescente)
+        bool right_assoc;       // Associatividade
+};
+
+// Precedência maior que +, -, * e / e menor que ^
+const int UNARY_PRECEDENCE = 3;
+
+// Recebe uma operação binária e retorna as suas informações respectivas
+bool binop_info(char op, OpInfo &info);
+
 #endif
