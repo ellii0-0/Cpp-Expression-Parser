@@ -9,7 +9,7 @@ const std::string symbols = "()=,+-*/^";      // string auxiliar
 
 static Token lex_string(std::string &src, std::size_t &i, char &c);
 static Token lex_number(std::string &src, std::size_t &i, char &c);
-static Token lex_operator(std::string &src, std::size_t &i, char &c);
+static Token lex_operator(std::size_t &i, char &c);
 
 std::vector<Token> lexical_analysis(std::string src)
 {
@@ -41,7 +41,7 @@ std::vector<Token> lexical_analysis(std::string src)
 
                 // Tokens de apenas um caractere
 
-                Token token = lex_operator(src, i, c);
+                Token token = lex_operator(i, c);
                 tokens.push_back(token);
         }
 
@@ -153,7 +153,7 @@ static Token lex_number(std::string &src, std::size_t &i, char &c)
         return token;
 }
 
-static Token lex_operator(std::string &src, std::size_t &i, char &c)
+static Token lex_operator(std::size_t &i, char &c)
 {
         std::size_t start = i;
         TokenType type = TokenType::NONE;

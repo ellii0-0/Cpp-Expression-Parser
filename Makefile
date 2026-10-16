@@ -8,7 +8,7 @@ ifeq ($(BUILD_MODE), DEBUG)
 		CFLAGS += -g -O0
 	endif
 else
-	CFLAGS += -s -O1
+	CFLAGS += -s -O1 -Wall -Wextra -Wpedantic -Werror
 endif
 
 INCLUDE_PATHS = -Iinclude
