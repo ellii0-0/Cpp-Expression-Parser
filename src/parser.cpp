@@ -2,366 +2,331 @@
 #include "parser.h"
 #include "lexer.h"
 
-#include <algorithm>
-#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-namespace {
+static Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type=TokenType::NONE, std::string msg="");
+static Token &peek_token(std::vector<Token> &tokens, int pos);
 
+static bool matches_funcdef(std::vector<Token> &tokens);
+
+static std::unique_ptr<FuncDef> parse_funcdef(std::vector<Token> &tokens, int &pos);
+static std::unique_ptr<Expr> parse_expr(std::vector<Token> &tokens, int &pos, int min_precedence);
+
+static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos);
+static ExprPtr parse_primary(std::vector<Token> &tokens, int &pos);
+
+// Estrutura auxiliar para operações binárias
 struct OpInfo {
-    char op;
-    int precedence;
-    bool right_assoc;
+        char op;                // Caractere da operação
+        int precedence;         // Precedência da operação (crescente)
+        bool right_assoc;       // Associatividade
 };
 
-constexpr int UNARY_PRECEDENCE = 3;
+// Precedência maior que +, -, * e / e menor que ^
+static const int UNARY_PRECEDENCE = 3;
 
-const Token &peek_token(
-    const std::vector<Token> &tokens,
-    std::size_t pos
-) {
-    if (pos >= tokens.size()) {
-        std::size_t error_pos = tokens.empty()
-            ? 0
-            : tokens.back().pos;
+static bool binop_info(char op, OpInfo &info);
 
-        throw ParseError("Fim inesperado da entrada", error_pos);
-    }
+ExprPtr parse_text(std::string src)
+{
+        std::vector<Token> tokens = lexical_analysis(src);
 
-    return tokens[pos];
-}
+        if (tokens.size() == 0)
+                throw std::runtime_error("Vetor de tokens vazio. Ocorreu um erro durante a análise léxica.");
 
-const Token &consume_token(
-    const std::vector<Token> &tokens,
-    std::size_t &pos,
-    TokenType expected = TokenType::NONE,
-    const std::string &msg = "Token inesperado"
-) {
-    const Token &tok = peek_token(tokens, pos);
+        ExprPtr expr;
+        int pos = 0;
 
-    if (expected != TokenType::NONE && tok.type != expected)
-        throw ParseError(msg, tok.pos);
+        if (matches_funcdef(tokens))
+                expr = parse_funcdef(tokens, pos);
+        else
+                expr = parse_expr(tokens, pos, 1);
 
-    ++pos;
-    return tok;
-}
+        // Testa se todos os tokens foram consumidos
 
-bool binop_info(TokenType type, OpInfo &info) {
-    switch (type) {
-    case TokenType::PLUS:
-        info = {'+', 1, false};
-        return true;
+        Token &tok = peek_token(tokens, pos);
 
-    case TokenType::MINUS:
-        info = {'-', 1, false};
-        return true;
-
-    case TokenType::TIMES:
-        info = {'*', 2, false};
-        return true;
-
-    case TokenType::DIVISION:
-        info = {'/', 2, false};
-        return true;
-
-    case TokenType::POW:
-        info = {'^', 4, true};
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-ExprPtr parse_expr(
-    const std::vector<Token> &tokens,
-    std::size_t &pos,
-    int min_precedence
-);
-
-ExprPtr parse_unary(
-    const std::vector<Token> &tokens,
-    std::size_t &pos
-);
-
-ExprPtr parse_primary(
-    const std::vector<Token> &tokens,
-    std::size_t &pos
-) {
-    const Token &tok = consume_token(tokens, pos);
-
-    switch (tok.type) {
-    case TokenType::NUMBER:
-        return std::make_unique<Number>(tok.num);
-
-    case TokenType::STRING: {
-        std::string name = tok.text;
-
-        // Apenas consulta: o token seguinte ainda não é consumido.
-        if (peek_token(tokens, pos).type != TokenType::LEFT_PAREN)
-            return std::make_unique<Variable>(std::move(name));
-
-        consume_token(tokens, pos, TokenType::LEFT_PAREN);
-
-        Args args;
-
-        // Permite chamadas sem argumentos, como f().
-        if (peek_token(tokens, pos).type != TokenType::RIGHT_PAREN) {
-            while (true) {
-                args.push_back(parse_expr(tokens, pos, 1));
-
-                if (peek_token(tokens, pos).type != TokenType::COMMA)
-                    break;
-
-                consume_token(tokens, pos, TokenType::COMMA);
-            }
-        }
-
-        // O ')' é consumido mesmo quando não há argumentos.
-        consume_token(
-            tokens,
-            pos,
-            TokenType::RIGHT_PAREN,
-            "Esperado ')' após os argumentos da função"
-        );
-
-        return std::make_unique<Call>(
-            std::move(name),
-            std::move(args)
-        );
-    }
-
-    case TokenType::LEFT_PAREN: {
-        ExprPtr expr = parse_expr(tokens, pos, 1);
-
-        consume_token(
-            tokens,
-            pos,
-            TokenType::RIGHT_PAREN,
-            "Parêntese direito ')' faltante"
-        );
+        if (tok.type != TokenType::END)
+                throw ParseError("Token inesperado '" + tok.text + "'", tok.pos);
 
         return expr;
-    }
-
-    default:
-        throw ParseError("Esperada uma expressão", tok.pos);
-    }
 }
 
-ExprPtr parse_unary(
-    const std::vector<Token> &tokens,
-    std::size_t &pos
-) {
-    const Token &tok = peek_token(tokens, pos);
+static ExprPtr parse_primary(std::vector<Token> &tokens, int &pos)
+{
+        Token tok = consume_token(tokens, pos);
 
-    if (tok.type != TokenType::PLUS &&
-        tok.type != TokenType::MINUS) {
-        return parse_primary(tokens, pos);
-    }
+        switch (tok.type) {
+        case TokenType::NUMBER: {
+                // Números
 
-    const bool negative = tok.type == TokenType::MINUS;
-    consume_token(tokens, pos);
+                std::unique_ptr<Number> num = std::make_unique<Number>(tok.num);
+                return num;
+        }
+        
+        case TokenType::STRING: {
+                // variáveis e chamadas de funções
+                
+                std::string name = tok.text;
 
-    ExprPtr rhs = parse_expr(tokens, pos, UNARY_PRECEDENCE);
+                if (peek_token(tokens, pos).type != TokenType::LEFT_PAREN) {
+                        std::unique_ptr<Variable> var = std::make_unique<Variable>(std::move(name));
+                        return var;
+                }
 
-    if (negative)
-        return std::make_unique<UnOp>('-', std::move(rhs));
+                pos++;
 
-    return rhs;
-}
+                // Chamada de função (parse de uma tupla)
 
-ExprPtr parse_expr(
-    const std::vector<Token> &tokens,
-    std::size_t &pos,
-    int min_precedence
-) {
-    ExprPtr lhs = parse_unary(tokens, pos);
+                Args args;
 
-    while (true) {
-        const Token &tok = peek_token(tokens, pos);
-        OpInfo info{};
+                tok = peek_token(tokens, pos);
 
-        if (!binop_info(tok.type, info) ||
-            info.precedence < min_precedence) {
-            break;
+                if (tok.type == TokenType::RIGHT_PAREN) {
+                        pos++;
+                } else {
+                        do {
+                                ExprPtr arg = parse_expr(tokens, pos, 1);
+                                args.push_back(std::move(arg));
+
+                                tok = consume_token(tokens, pos);
+                        } while(tok.type == TokenType::COMMA);
+
+                        if (tok.type != TokenType::RIGHT_PAREN)
+                                throw ParseError("Parêntese direito ')' faltante", tok.pos);
+                }
+
+                std::unique_ptr<Call> call = std::make_unique<Call>(std::move(name), std::move(args));
+                return call;
         }
 
-        consume_token(tokens, pos);
+        case TokenType::LEFT_PAREN: {
+                // Parênteses
 
-        const int next_precedence = info.right_assoc
-            ? info.precedence
-            : info.precedence + 1;
+                ExprPtr expr = parse_expr(tokens, pos, 1);
 
-        ExprPtr rhs = parse_expr(tokens, pos, next_precedence);
+                consume_token(tokens, pos, TokenType::RIGHT_PAREN, "Parêntese direito ')' faltante");
 
-        lhs = std::make_unique<BinOp>(
-            info.op,
-            std::move(lhs),
-            std::move(rhs)
-        );
-    }
+                return expr;
+        }
 
-    return lhs;
+        default:
+                throw ParseError("Expressão faltante", tok.pos);
+        }
 }
 
-bool matches_funcdef(const std::vector<Token> &tokens) {
-    // Reconhece:
-    // nome(param1, param2, ...) =
-    // ou nome() =
-    //
-    // Não modifica os tokens nem consome a entrada.
+static std::unique_ptr<Expr> parse_expr(std::vector<Token> &tokens, int &pos, int min_precedence)
+{
+        // Parsing com paradigma bottom-up:
+        // a árvore é construída do nó mais à esquerda até o topo
 
-    std::size_t i = 0;
+        ExprPtr lhs = parse_unary(tokens, pos);
 
-    auto matches = [&](TokenType type) {
-        return i < tokens.size() && tokens[i].type == type;
-    };
-
-    if (!matches(TokenType::STRING))
-        return false;
-    ++i;
-
-    if (!matches(TokenType::LEFT_PAREN))
-        return false;
-    ++i;
-
-    if (!matches(TokenType::RIGHT_PAREN)) {
         while (true) {
-            if (!matches(TokenType::STRING))
+                Token &tok = peek_token(tokens, pos);
+                OpInfo info;
+
+                bool is_binop = binop_info(tok.text[0], info);
+
+                if (!is_binop || (info.precedence < min_precedence))
+                        // A operação possui precedência menor que a mínima
+                        // então o parse da expressão termina
+                        break;
+
+                pos++;
+
+                ExprPtr rhs;
+
+                // Associatividade à direita e à esquerda
+
+                if (info.right_assoc)
+                        rhs = parse_expr(tokens, pos, info.precedence);
+                else
+                        rhs = parse_expr(tokens, pos, info.precedence + 1);
+
+                // Construção bottom-up
+
+                lhs = std::make_unique<BinOp>(info.op, std::move(lhs), std::move(rhs));
+        }
+
+        return lhs;
+}
+
+static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos)
+{
+        Token tok = peek_token(tokens, pos);
+
+        if (tok.type == TokenType::PLUS || tok.type == TokenType::MINUS) {
+                // Parse de expressões como +x ou -x
+
+                char op = tok.text[0];
+                pos++;
+                
+                ExprPtr rhs = parse_expr(tokens, pos, UNARY_PRECEDENCE);
+
+                if (op == '-') {
+                        std::unique_ptr<UnOp> unop = std::make_unique<UnOp>('-', std::move(rhs));
+                        return unop;
+                } else {
+                        return rhs;
+                }
+        } else {
+                // Parse das demais expressões
+
+                ExprPtr expr = parse_primary(tokens, pos);
+                return expr;
+        }
+}
+
+static bool matches_funcdef(std::vector<Token> &tokens)
+{
+        // STRING ( STRING , STRING, ... ) = EXPR
+        
+        // O último token sempre é do tipo TokenType::END, o que 
+        // elimina a necessidade de checar para o fim do vetor todas as vezes
+
+        // STRING
+
+        Token tok = tokens[0];
+
+        if (tok.type != TokenType::STRING)
                 return false;
-            ++i;
 
-            if (!matches(TokenType::COMMA))
-                break;
+        // LEFT_PAREN
 
-            ++i;
-        }
-    }
+        tok = tokens[1];
 
-    if (!matches(TokenType::RIGHT_PAREN))
-        return false;
-    ++i;
+        if (tok.type != TokenType::LEFT_PAREN)
+                return false;
 
-    return matches(TokenType::EQUALS);
+        // STRING, STRING, ... RIGHT_PAREN
+
+        int i = 2;
+
+        do {
+                tok = tokens[i];
+                i++;
+
+                if (tok.type != TokenType::STRING)
+                        return false;
+
+                tok = tokens[i];
+                i++;
+        } while (tok.type == TokenType::COMMA);
+
+        if (tok.type != TokenType::RIGHT_PAREN)
+                return false;
+
+        // EQUALS
+
+        tok = tokens[i];
+        i++;
+
+        if (tok.type != TokenType::EQUALS)
+                return false;
+
+        // Checar se há "corpo"
+
+        tok = tokens[i];
+        i++;
+
+        if (tok.type != TokenType::END)
+                return true;
+        else
+                throw ParseError("Expressão faltante", tok.pos);
 }
 
-std::unique_ptr<FuncDef> parse_funcdef(
-    const std::vector<Token> &tokens,
-    std::size_t &pos
-) {
-    std::string name = consume_token(
-        tokens,
-        pos,
-        TokenType::STRING,
-        "Esperado nome da função"
-    ).text;
+static std::unique_ptr<FuncDef> parse_funcdef(std::vector<Token> &tokens, int &pos)
+{
+        // STRING ( STRING , STRING, ... ) = EXPR
 
-    consume_token(
-        tokens,
-        pos,
-        TokenType::LEFT_PAREN,
-        "Esperado '(' após o nome da função"
-    );
+        // Nome da função 
 
-    std::vector<std::string> params;
+        Token tok = consume_token(tokens, pos, TokenType::STRING, "Parâmetro name faltante");
 
-    if (peek_token(tokens, pos).type != TokenType::RIGHT_PAREN) {
-        while (true) {
-            const Token &param = consume_token(
-                tokens,
-                pos,
-                TokenType::STRING,
-                "Esperado nome de parâmetro"
-            );
+        std::string name = tok.text;
 
-            if (std::find(params.begin(), params.end(), param.text)
-                != params.end()) {
-                throw ParseError(
-                    "Parâmetro repetido: " + param.text,
-                    param.pos
-                );
-            }
+        // LEFT_PAREN
 
-            params.push_back(param.text);
+        consume_token(tokens, pos, TokenType::LEFT_PAREN, "Esperado parêntese esquerdo '(' faltante para definição de função");
 
-            if (peek_token(tokens, pos).type != TokenType::COMMA)
-                break;
+        // STRING, STRING, ... RIGHT_PAREN
 
-            consume_token(tokens, pos, TokenType::COMMA);
-        }
-    }
+        std::vector<std::string> params;
 
-    consume_token(
-        tokens,
-        pos,
-        TokenType::RIGHT_PAREN,
-        "Esperado ')' após os parâmetros"
-    );
+        do {
+                tok = consume_token(tokens, pos, TokenType::STRING, "Parâmetro faltante");
 
-    consume_token(
-        tokens,
-        pos,
-        TokenType::EQUALS,
-        "Esperado '=' na definição da função"
-    );
+                params.push_back(tok.text);
+                
+                tok = consume_token(tokens, pos);
+        } while (tok.type == TokenType::COMMA);
 
-    if (peek_token(tokens, pos).type == TokenType::END) {
-        throw ParseError(
-            "Corpo da função faltante",
-            peek_token(tokens, pos).pos
-        );
-    }
+        if (tok.type != TokenType::RIGHT_PAREN)
+                throw ParseError("Parêntese direito ')' faltante", tok.pos);
 
-    ExprPtr body = parse_expr(tokens, pos, 1);
+        // EQUALS
 
-    return std::make_unique<FuncDef>(
-        std::move(name),
-        std::move(params),
-        std::move(body)
-    );
+        consume_token(tokens, pos, TokenType::EQUALS, "Sinal de igual '=' faltante");
+
+        // Parse do "corpo" da função
+
+        tok = peek_token(tokens, pos);
+
+        if (tok.type == TokenType::END)
+                throw ParseError("Expressão faltante", tok.pos);
+
+        ExprPtr body = parse_expr(tokens, pos, 1);
+
+        // Retorno
+
+        std::unique_ptr<FuncDef> func = std::make_unique<FuncDef>(std::move(name), std::move(params), std::move(body));
+
+        return func;
 }
 
-} // namespace
+static Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type, std::string msg)
+{
+        Token &tok = tokens[pos];
 
-ExprPtr parse_text(std::string src) {
-    const std::vector<Token> tokens = lexical_analysis(std::move(src));
+        // Nunca avança além do token END, para que pos continue válido
+        if (tok.type != TokenType::END)
+                pos++;
 
-    if (tokens.empty())
-        throw ParseError("Vetor de tokens vazio", 0);
+        if (type != TokenType::NONE && tok.type != type)
+                throw ParseError(msg, tok.pos);
 
-    if (tokens.back().type != TokenType::END) {
-        throw ParseError(
-            "Token de fim da entrada ausente",
-            tokens.back().pos
-        );
-    }
+        return tok;
+}
 
-    std::size_t pos = 0;
-    ExprPtr expr;
+static Token &peek_token(std::vector<Token> &tokens, int pos)
+{
+        Token &tok = tokens[pos];
+        return tok;
+}
 
-    if (matches_funcdef(tokens))
-        expr = parse_funcdef(tokens, pos);
-    else
-        expr = parse_expr(tokens, pos, 1);
-
-    // Impede aceitar apenas uma parte da entrada.
-    consume_token(
-        tokens,
-        pos,
-        TokenType::END,
-        "Token inesperado após o fim da expressão"
-    );
-
-    if (pos != tokens.size()) {
-        throw ParseError(
-            "Há tokens após o marcador de fim da entrada",
-            tokens[pos].pos
-        );
-    }
-
-    return expr;
+static bool binop_info(char op, OpInfo &info)
+{
+        switch (op) {
+        case '+':
+                info = {'+', 1, false};
+                return true;
+        case '-':
+                info = {'-', 1, false};
+                return true;
+        case '*':
+                info = {'*', 2, false};
+                return true;
+        case '/':
+                info = {'/', 2, false};
+                return true;
+        case '^':
+                info = {'^', 4, true};
+                return true;
+        default:
+                return false;
+        }
 }
