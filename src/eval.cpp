@@ -200,69 +200,90 @@ double FunctionTable::call(const std::string &name,
         for (std::size_t i = 0; i < params.size(); i++)
                 locals.emplace(params[i], args[i]);
 
-        return eval(function.definition->get_body(), *this, locals);
+        return function.definition->get_body().eval(*this, locals);
 }
 
-double eval(const Expr &expr, const FunctionTable &functions,
-            const Variables &variables)
+double Number::eval(const FunctionTable &, const Variables &) const
 {
-        if (const auto *node = dynamic_cast<const Number *>(&expr))
-                return checked(node->get_val());
+        return checked(get_val());
+}
 
-        if (const auto *node = dynamic_cast<const Variable *>(&expr)) {
-                auto it = variables.find(node->get_name());
-                if (it == variables.end())
-                        throw EvalError("Variável não encontrada: '" + node->get_name() + "'");
-                return checked(it->second);
+double Variable::eval(const FunctionTable &, const Variables &variables) const
+{
+        auto it = variables.find(get_name());
+        
+        if (it == variables.end())
+                throw EvalError("Variável não encontrada: '" + get_name() + "'");
+        
+        return checked(it->second);
+}
+
+double UnOp::eval(const FunctionTable &functions, const Variables &variables) const
+{
+        double value = get_rhs().eval(functions, variables);
+
+        switch (get_op()) {
+        case '+':
+                return value;
+        case '-':
+                return -value;
+        default:
+                throw EvalError("Operador unário inválido");
         }
+}
 
-        if (const auto *node = dynamic_cast<const UnOp *>(&expr)) {
-                double rhs = eval(node->get_rhs(), functions, variables);
-                switch (node->get_op()) {
-                case '+': return rhs;
-                case '-': return -rhs;
-                default: throw EvalError("Operador unário inválido");
-                }
+double BinOp::eval(const FunctionTable &functions, const Variables &variables) const
+{
+        double left = get_lhs().eval(functions, variables);
+        double right = get_rhs().eval(functions, variables);
+        
+        switch (get_op()) {
+        case '+':
+                return checked(left + right);
+        case '-':
+                return checked(left - right);
+        case '*':
+                return checked(left * right);
+        case '/':
+                if (right == 0.0)
+                        throw EvalError("Divisão por zero");
+                
+                return checked(left / right);
+        case '^':
+                return checked(std::pow(left, right));
+        default:
+                throw EvalError("Operador binário inválido");
         }
+}
 
-        if (const auto *node = dynamic_cast<const BinOp *>(&expr)) {
-                double lhs = eval(node->get_lhs(), functions, variables);
-                double rhs = eval(node->get_rhs(), functions, variables);
-                switch (node->get_op()) {
-                case '+': return checked(lhs + rhs);
-                case '-': return checked(lhs - rhs);
-                case '*': return checked(lhs * rhs);
-                case '/':
-                        if (rhs == 0.0)
-                                throw EvalError("Divisão por zero");
-                        return checked(lhs / rhs);
-                case '^': return checked(std::pow(lhs, rhs));
-                default: throw EvalError("Operador binário inválido");
-                }
+double Call::eval(const FunctionTable &functions, const Variables &variables) const
+{
+        const auto &function = functions.get(get_name());
+        
+        check_arity(get_name(), function.arity, get_args().size());
+        
+        std::vector<double> values;
+        
+        for (const auto &arg : get_args()) {
+                if (!arg)
+                        throw EvalError("Argumento nulo na árvore");
+                
+                values.push_back(arg->eval(functions, variables));
         }
+        
+        if (function.native)
+                return functions.call(get_name(), values);
 
-        if (const auto *node = dynamic_cast<const Call *>(&expr)) {
-                const auto &function = functions.get(node->get_name());
-                check_arity(node->get_name(), function.arity, node->get_args().size());
-                std::vector<double> args;
-                for (const auto &arg : node->get_args()) {
-                        if (!arg)
-                                throw EvalError("Argumento nulo na árvore");
-                        args.push_back(eval(*arg, functions, variables));
-                }
-                if (function.native)
-                        return functions.call(node->get_name(), args);
+        Variables locals = variables;
+        const auto &params = function.definition->get_params();
+        
+        for (std::size_t i = 0; i < params.size(); i++)
+                locals.insert_or_assign(params[i], checked(values[i]));
 
-                Variables locals = variables;
-                const auto &params = function.definition->get_params();
-                for (std::size_t i = 0; i < params.size(); i++)
-                        locals.insert_or_assign(params[i], checked(args[i]));
+        return function.definition->get_body().eval(functions, locals);
+}
 
-                return eval(function.definition->get_body(), functions, locals);
-        }
-
-        if (dynamic_cast<const FuncDef *>(&expr))
-                throw EvalError("Use FunctionTable::add() para cadastrar uma definição");
-
-        throw EvalError("Tipo de expressão desconhecido");
+double FuncDef::eval(const FunctionTable &, const Variables &) const
+{
+        throw EvalError("Use FunctionTable::add() para cadastrar uma definição");
 }

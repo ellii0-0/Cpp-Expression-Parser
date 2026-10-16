@@ -17,8 +17,8 @@ int main()
         variables["e"] = 2.71828182845904523536;
 
         while (std::getline(std::cin, input)) {
-                        if (input == "sair")
-                break;
+                if (input == "sair")
+                        break;
                 if (input.find_first_not_of(" \t\r\n") == std::string::npos)
                         continue;
 
@@ -30,7 +30,7 @@ int main()
                                 std::cout << "Função cadastrada: " << definition->get_name() << '\n';
                         } else {
                                 std::cout << std::setprecision(15)
-                                          << eval(*expr, functions, variables) << '\n';
+                                          << expr->eval(functions, variables) << '\n';
                         }
                 }
                 catch (const LexError &error) {

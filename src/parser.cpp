@@ -167,12 +167,8 @@ static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos)
                 
                 ExprPtr rhs = parse_expr(tokens, pos, UNARY_PRECEDENCE);
 
-                if (op == '-') {
-                        std::unique_ptr<UnOp> unop = std::make_unique<UnOp>('-', std::move(rhs));
-                        return unop;
-                } else {
-                        return rhs;
-                }
+                std::unique_ptr<UnOp> unop = std::make_unique<UnOp>('-', std::move(rhs));
+                return unop;
         } else {
                 // Parse das demais expressões
 

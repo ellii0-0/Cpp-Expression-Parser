@@ -15,8 +15,6 @@ public:
         explicit EvalError(const std::string &msg) : std::runtime_error(msg) {}
 };
 
-using Variables = std::unordered_map<std::string, double>;
-
 class FunctionTable {
 public:
         struct Function {
@@ -48,9 +46,5 @@ private:
                            const std::unordered_set<std::string> &params,
                            const Variables &variables) const;
 };
-
-// calcula o valor da expressão. Lança EvalError se houver erro.
-double eval(const Expr &expr, const FunctionTable &functions,
-            const Variables &variables = Variables{});
 
 #endif
