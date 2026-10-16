@@ -149,6 +149,8 @@ static ExprPtr parse_unary(std::vector<Token> &tokens, int &pos)
 
         if (tok.type == TokenType::PLUS || tok.type == TokenType::MINUS) {
                 // Parse de expressões como +x ou -x
+
+                char op = tok.text[0];
                 pos++;
                 
                 ExprPtr rhs = parse_expr(tokens, pos, UNARY_PRECEDENCE);
