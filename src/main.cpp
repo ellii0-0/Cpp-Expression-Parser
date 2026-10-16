@@ -1,8 +1,15 @@
 #include <iostream>
 
+#include "ast.h"
+#include "parser.h"
+
 int main()
 {
-    std::cout << "Olá, mundo!" << std::endl;
+        std::string input;
 
-    return 0;
+        std::cin >> input;
+        
+        ExprPtr expr = parse_text(input);
+
+        return 0;
 }

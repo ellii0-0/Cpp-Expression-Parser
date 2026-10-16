@@ -2,7 +2,7 @@
 #include "parser.h"
 #include "lexer.h"
 
-Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type, std::string msg);
+Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type=TokenType::NONE, std::string msg="");
 Token &peek_token(std::vector<Token> &tokens, int pos);
 
 bool matches_funcdef(std::vector<Token> &tokens);
@@ -86,7 +86,7 @@ ExprPtr parse_primary(std::vector<Token> &tokens, int &pos)
                 if (tok.type != TokenType::RIGHT_PAREN)
                         throw ParseError("Parêntese direito ')' faltante", tok.pos);
 
-                std::unique_ptr<Call> call = std::make_unique<Call>(name, args);
+                std::unique_ptr<Call> call = std::make_unique<Call>(std::move(name), std::move(args));
                 return call;
         }
 
@@ -95,10 +95,7 @@ ExprPtr parse_primary(std::vector<Token> &tokens, int &pos)
 
                 ExprPtr expr = parse_expr(tokens, pos, 1);
 
-                tok = consume_token(tokens, pos);
-
-                if (tok.type != TokenType::RIGHT_PAREN)
-                        throw ParseError("Parêntese direito ')' faltante", tok.pos);
+                consume_token(tokens, pos, TokenType::RIGHT_PAREN, "Parêntese direito ')' faltante");
 
                 return expr;
         }
@@ -247,15 +244,14 @@ std::unique_ptr<FuncDef> parse_funcdef(std::vector<Token> &tokens)
 
         // EXPR, EXPR, ... RIGHT_PAREN
 
-        Args params;
+        std::vector<std::string> params;
 
         do {
                 tok = consume_token(tokens, pos, TokenType::STRING, "Parâmetro faltante");
 
-                std::string param = std::move(tok.text);
+                std::string name = std::move(tok.text);
                 
-                std::unique_ptr<Variable> var = std::make_unique<Variable>(param);
-                params.push_back(std::move(var));
+                params.push_back(std::move(name));
                 
                 tok = consume_token(tokens, pos);
         } while (tok.type == TokenType::COMMA);
@@ -278,17 +274,17 @@ std::unique_ptr<FuncDef> parse_funcdef(std::vector<Token> &tokens)
 
         // Retorno
 
-        std::unique_ptr<FuncDef> func = std::make_unique<FuncDef>(name, params, body);
+        std::unique_ptr<FuncDef> func = std::make_unique<FuncDef>(std::move(name), std::move(params), std::move(body));
 
         return func;
 }
 
-Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type=TokenType::NONE, std::string msg="")
+Token &consume_token(std::vector<Token> &tokens, int &pos, TokenType type, std::string msg)
 {
         Token &tok = tokens[pos];
         pos++;
 
-        if (type != TokenType::NONE && tok.type == type)
+        if (type != TokenType::NONE && tok.type != type)
                 throw ParseError(msg, tok.pos);
 
         return tok;
