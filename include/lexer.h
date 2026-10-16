@@ -32,6 +32,16 @@ public:
         std::size_t pos;        // Posição na string do token
 };
 
+// Erro do lexer
+class LexError : public std::runtime_error {
+private:
+        std::size_t position;   // Posição do token
+public:
+        LexError(const std::string &msg, std::size_t position)
+                : std::runtime_error(msg), position(position) {}
+        std::size_t pos() const { return position; }
+};
+
 // Realiza a análise léxica de uma string
 std::vector<Token> lexical_analysis(std::string src);
 
