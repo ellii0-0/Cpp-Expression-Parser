@@ -8,7 +8,7 @@ Token &peek_token(std::vector<Token> &tokens, int pos);
 bool matches_funcdef(std::vector<Token> &tokens);
 
 std::unique_ptr<FuncDef> parse_funcdef(std::vector<Token> &tokens);
-std::unique_ptr<Expr> parse_expr(std::vector<Token> &tokens, int &pos);
+std::unique_ptr<Expr> parse_expr(std::vector<Token> &tokens, int &pos, int min_precedence);
 
 ExprPtr parse_unary(std::vector<Token> &tokens, int &pos);
 ExprPtr parse_primary(std::vector<Token> &tokens, int &pos);
