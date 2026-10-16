@@ -7,9 +7,12 @@ int main()
 {
         std::string input;
 
-        std::cin >> input;
+        std::getline(std::cin, input);
         
         ExprPtr expr = parse_text(input);
+
+        expr->print();
+        std::cout << '\n';
 
         return 0;
 }
