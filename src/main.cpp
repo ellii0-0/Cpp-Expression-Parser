@@ -11,6 +11,11 @@ int main()
         FunctionTable functions;
         std::string input;
 
+        Variables variables;
+
+        variables["pi"] = 3.14159265358979323846;
+        variables["e"] = 2.71828182845904523536;
+
         while (std::getline(std::cin, input)) {
                         if (input == "sair")
                 break;
@@ -25,7 +30,7 @@ int main()
                                 std::cout << "Função cadastrada: " << definition->get_name() << '\n';
                         } else {
                                 std::cout << std::setprecision(15)
-                                          << eval(*expr, functions) << '\n';
+                                          << eval(*expr, functions, variables) << '\n';
                         }
                 }
                 catch (const LexError &error) {
