@@ -23,28 +23,7 @@ struct OpInfo {
 // Precedência maior que +, -, * e / e menor que ^
 const int UNARY_PRECEDENCE = 3;
 
-bool binop_info(char op, OpInfo &info)
-{
-        switch (op) {
-        case '+':
-                info = {'+', 1, false};
-                return true;
-        case '-':
-                info = {'-', 1, false};
-                return true;
-        case '*':
-                info = {'*', 2, false};
-                return true;
-        case '/':
-                info = {'/', 2, false};
-                return true;
-        case '^':
-                info = {'^', 4, true};
-                return true;
-        default:
-                return false;
-        }
-}
+bool binop_info(char op, OpInfo &info);
 
 ExprPtr parse_text(std::string src)
 {
@@ -319,4 +298,27 @@ Token &peek_token(std::vector<Token> &tokens, int pos)
 {
         Token &tok = tokens[pos];
         return tok;
+}
+
+bool binop_info(char op, OpInfo &info)
+{
+        switch (op) {
+        case '+':
+                info = {'+', 1, false};
+                return true;
+        case '-':
+                info = {'-', 1, false};
+                return true;
+        case '*':
+                info = {'*', 2, false};
+                return true;
+        case '/':
+                info = {'/', 2, false};
+                return true;
+        case '^':
+                info = {'^', 4, true};
+                return true;
+        default:
+                return false;
+        }
 }
