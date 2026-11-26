@@ -27,7 +27,6 @@ OBJS = $(patsubst src/%.cpp,obj/%.o,$(SRC))
 
 .PHONY: all run clean
 
-# ---------- Alvos ----------
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
@@ -37,11 +36,9 @@ obj/%.o: src/%.cpp
 	@$(MKDIR)
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
-# Compila (se preciso) e executa
 run: $(TARGET)
 	$(RUN)
 
-# Remove objetos e executável
 clean:
 	-$(RM_OBJ)
 	-$(RM_BIN)
