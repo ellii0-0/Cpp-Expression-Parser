@@ -27,29 +27,23 @@ static const int PARTICOES_MAX = 100000;
 
 static std::thread plot_thread;
 
-static PlotCommand plot_parse(const std::string &input,
-                              const FunctionTable &functions,
-                              const Variables &variables);
-static std::vector<double> plot_sample(const PlotCommand &cmd,
-                                       const FunctionTable &functions);
+static PlotCommand plot_parse(const std::string &input);
+static std::vector<double> plot_sample(const PlotCommand &cmd);
 static void plot_image(PlotCommand cmd, std::vector<double> ys);
 
-static double eval_limite(const std::string &s, const char *nome,
-                          const FunctionTable &functions,
-                          const Variables &variables);
+static double eval_limite(const std::string &s, const char *nome);
 static int parse_particoes(const std::string &s);
 
 static bool is_delim(char c);
 static std::string trim(const std::string &s);
 
-void plot_async(std::string &input, const FunctionTable &functions,
-                const Variables &variables)
+void plot_async(std::string &input)
 {
         // Sintaxe e avaliação na thread principal,
         // assim os erros chegam até a command()
 
-        PlotCommand cmd = plot_parse(input, functions, variables);
-        std::vector<double> ys = plot_sample(cmd, functions);
+        PlotCommand cmd = plot_parse(input);
+        std::vector<double> ys = plot_sample(cmd);
 
         // Espera o desenho anterior e dispara o novo
 
@@ -63,9 +57,7 @@ void plot_wait()
                 plot_thread.join();
 }
 
-static PlotCommand plot_parse(const std::string &input,
-                              const FunctionTable &functions,
-                              const Variables &variables)
+static PlotCommand plot_parse(const std::string &input)
 {
         // :plot f inicio..fim..particoes arquivo.png
         // :plot f inicio..fim "arquivo.png"
@@ -74,6 +66,8 @@ static PlotCommand plot_parse(const std::string &input,
         // e o que sobra no início é a função f
 
         const char *uso = "uso: :plot f inicio..fim[..particoes] arquivo.png";
+
+        const FunctionTable &functions = FunctionTable::instance();
 
         if (input.compare(0, 5, ":plot") != 0 || input.size() < 6 || !is_delim(input[5]))
                 throw PlotError("Comando inválido");
@@ -152,8 +146,8 @@ static PlotCommand plot_parse(const std::string &input,
                 cmd.particoes = parse_particoes(s_resto.substr(p2 + 2));
         }
 
-        cmd.inicio = eval_limite(s_inicio, "início", functions, variables);
-        cmd.fim = eval_limite(s_fim, "fim", functions, variables);
+        cmd.inicio = eval_limite(s_inicio, "início");
+        cmd.fim = eval_limite(s_fim, "fim");
 
         if (cmd.inicio >= cmd.fim)
                 throw PlotError("O início deve ser menor que o fim");
@@ -169,10 +163,11 @@ static PlotCommand plot_parse(const std::string &input,
         return cmd;
 }
 
-static std::vector<double> plot_sample(const PlotCommand &cmd,
-                                       const FunctionTable &functions)
+static std::vector<double> plot_sample(const PlotCommand &cmd)
 {
         // Avalia f nos pontos da partição
+
+        const FunctionTable &functions = FunctionTable::instance();
 
         std::vector<double> ys;
         ys.reserve(cmd.particoes + 1);
@@ -196,6 +191,7 @@ static std::vector<double> plot_sample(const PlotCommand &cmd,
 static void plot_image(PlotCommand cmd, std::vector<double> ys)
 {
         // Executa na thread paralela: só usa os valores recebidos por cópia
+        // (nunca acessa a FunctionTable)
 
         const int largura = 800;
         const int altura = 600;
@@ -268,11 +264,9 @@ static void plot_image(PlotCommand cmd, std::vector<double> ys)
         CloseWindow();
 }
 
-static double eval_limite(const std::string &s, const char *nome,
-                          const FunctionTable &functions,
-                          const Variables &variables)
+static double eval_limite(const std::string &s, const char *nome)
 {
-        // Avalia um limite do intervalo com o parser e o eval do interpretador
+        // Avalia um limite do intervalo com o parser e o eval_vars do interpretador
         // Aceita expressões sem espaços: pi, 2*pi, -pi/2, sqrt(2), ...
 
         if (trim(s).empty())
@@ -286,7 +280,7 @@ static double eval_limite(const std::string &s, const char *nome,
                 if (dynamic_cast<const FuncDef *>(expr.get()))
                         throw PlotError(std::string("Definição de função inválida em ") + nome);
 
-                v = expr->eval(functions, variables);
+                v = expr->eval();
         }
         catch (const LexError &e) {
                 throw PlotError(std::string("Erro léxico em ") + nome + ": " + e.what());

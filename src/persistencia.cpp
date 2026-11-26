@@ -3,9 +3,10 @@
 
 #include <iostream>
 
-void load_functions(const std::string &path, FunctionTable &functions,
-                    Variables &variables)
+void load_functions(const std::string &path)
 {
+        FunctionTable &functions = FunctionTable::instance();
+
         std::ifstream in(path);
 
         if (!in)
@@ -27,7 +28,7 @@ void load_functions(const std::string &path, FunctionTable &functions,
                         if (!definition)
                                 throw EvalError("a linha não é uma definição de função");
 
-                        functions.add(*definition, variables);
+                        functions.add(*definition);
                 }
                 catch (const std::exception &error) {
                         // LexError, ParseError and EvalError all derive from runtime_error

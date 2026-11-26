@@ -8,8 +8,11 @@
 #include "eval.h"
 #include "plot.h"
 
-bool command(std::string &input, FunctionTable &functions, Variables &variables)
+bool command(std::string &input)
 {
+        FunctionTable &functions = FunctionTable::instance();
+        Variables &variables = functions.variables();
+
         if (input == ":sair") {
                 return true;
         } else if (input == ":listar") {
@@ -59,15 +62,19 @@ bool command(std::string &input, FunctionTable &functions, Variables &variables)
                 return false;
         } else if (input == ":ajuda") {
                 std::cout << "Comandos disponíveis:\n";
-                std::cout << "  :sair   - Encerra o programa\n";
-                std::cout << "  :listar - Lista funções e variáveis cadastradas\n";
-                std::cout << "  :limpar - Limpa a tela\n";
-                std::cout << "  :ajuda  - Mostra esta mensagem de ajuda\n";
+                std::cout << "  :ajuda   - Mostra esta mensagem de ajuda\n";
+                std::cout << "  :limpar  - Limpa a tela\n";
+                std::cout << "  :listar  - Lista funções e variáveis cadastradas\n";
+                std::cout << "  :sair    - Encerra o programa\n\n";
+
+                std::cout << "Salvar plots:\n";
+                std::cout << "  :plot [unária] [início]..[fim](..[partições])? [caminho]\n";
+
                 return false;
         } else if (input.compare(0, 5, ":plot") == 0 && input.size() > 5 &&
 	           isspace(input[5])) {
 		try {
-			plot_async(input, functions, variables);
+			plot_async(input);
 		} catch (const PlotError &e) {
 			std::cerr << "Erro de sintaxe em :plot: " << e.what() << '\n';
 		}

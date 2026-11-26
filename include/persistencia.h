@@ -69,7 +69,6 @@ private:
         bool stop_ = false;
         std::thread worker_;   
 };
-void load_functions(const std::string &path, FunctionTable &functions,
-                    Variables &variables);
+void load_functions(const std::string &path);
 
 #endif

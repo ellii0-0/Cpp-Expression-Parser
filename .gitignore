@@ -3,3 +3,4 @@ build
 build.exe
 .vscode
 functions.txt
+*.png

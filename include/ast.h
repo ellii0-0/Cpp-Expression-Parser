@@ -13,10 +13,11 @@ using Variables = std::unordered_map<std::string, double>;      // Tabela de var
 // Classe base da árvore de sintaxe (nunca instanciada por si própria)
 class Expr {
 public:
-        virtual ~Expr() = default;              // Destrutor padrão virtual
-        virtual void print() const = 0;         // Função print virtual (com override nas demais classes)
-        // Função eval virtual (com override nas demais classes)
-        virtual double eval(const FunctionTable &, const Variables &) const = 0;
+        virtual ~Expr() = default;                                      // Destrutor padrão virtual
+        virtual void print() const = 0;                                 // Função print virtual (com override nas demais classes)
+
+        double eval() const;                                            // Função de evaluação principal
+        virtual double eval_vars(const Variables &vars) const = 0;      // Função de evaluação polimórfica
 };
 
 using ExprPtr = std::unique_ptr<Expr>;          // Ponteiro único a expressões
@@ -33,7 +34,7 @@ public:
         explicit Variable(std::string name) : name(std::move(name)) {}
         const std::string &get_name() const { return name; }                    // Getter do nome
         void print() const override;                                            // Sobrecarga do print para variáveis
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para variáveis
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para variáveis
 };
 
 // Classe de um nó de números de pontos flutuantes
@@ -44,7 +45,7 @@ public:
         explicit Number(double val) : val(val) {}                               // Construtor padrão do nó de número
         double get_val() const { return val; }                                  // Getter do valor do número
         void print() const override;                                            // Sobrecarga do print para números
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para números
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para números
 };
 
 // Classe de um nó de operação binária (+, -, *, /, ^)
@@ -61,7 +62,7 @@ public:
         const Expr &get_lhs() const { return *lhs; }                            // Getter da referência do lado esquerdo
         const Expr &get_rhs() const { return *rhs; }                            // Getter da referência do lado direito
         void print() const override;                                            // Sobrecarga do print para operações binárias
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para operações binárias
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para operações binárias
 };
 
 // Classe de um nó de + e - unários
@@ -77,7 +78,7 @@ public:
         char get_op() const { return op; }                                      // Getter do caractere da operação
         const Expr &get_rhs() const { return *rhs; }                            // Getter da referência do lado direito
         void print() const override;                                            // Sobrecarga do print para operações binárias
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para operações binárias
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para operações binárias
 };
 
 // Classe de chamada de função
@@ -92,7 +93,7 @@ public:
         const std::string &get_name() const { return name; }                    // Getter do nome
         const Args &get_args() const { return args; }                           // Getter da referência dos argumentos
         void print() const override;                                            // Sobrecarga do print para chamadas
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para chamadas
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para chamadas
 };
 
 // Definição de funções 
@@ -110,7 +111,7 @@ public:
         const std::vector<std::string> &get_params() const { return params; }   // Getter da referência dos parâmetros
         const Expr &get_body() const { return *body; }                          // Getter da referência do corpo ou lei
         void print() const override;                                            // Sobrecarga do print para definições
-        double eval(const FunctionTable &, const Variables &) const override;   // Sobrecarga do eval para definições (apenas uma exceção)
+        double eval_vars(const Variables &vars) const override;   // Sobrecarga do eval_vars para definições (apenas uma exceção)
 };
 
 // Estrutura auxiliar para operações binárias

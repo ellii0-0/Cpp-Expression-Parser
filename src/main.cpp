@@ -15,17 +15,12 @@ int main()
 {
         SetTraceLogLevel(LOG_NONE);     // desativa o console da raylib
 
-        FunctionTable functions;
+        FunctionTable &functions = FunctionTable::instance();
         std::string input;
-
-        Variables variables;
-
-        variables["pi"] = 3.14159265358979323846;
-        variables["e"] = 2.71828182845904523536;
 
         // carrega as funções salvas antes de criar o saver,
         const std::string save_path = "functions.txt";
-        load_functions(save_path, functions, variables);
+        load_functions(save_path);
         FunctionSaver saver(save_path);
 
         std::cout << "Digite \":ajuda\" para ver os comandos disponíveis.\n";
@@ -37,7 +32,7 @@ int main()
                         break;
 
                 if (input[0] == ':') {
-                        bool exit = command(input, functions, variables);
+                        bool exit = command(input);
 
                         if (exit)
                                 break;
@@ -52,7 +47,7 @@ int main()
                         ExprPtr expr = parse_text(input);
 
                         if (const auto *definition = dynamic_cast<const FuncDef *>(expr.get())) {
-                                functions.add(*definition, variables);
+                                functions.add(*definition);
 
                                 // Só chega aqui se add() não lançou exceção
                                 saver.save(input);
@@ -62,7 +57,7 @@ int main()
                                 std::cout << '\n';
                         } else {
                                 std::cout << std::setprecision(15)
-                                          << expr->eval(functions, variables) << '\n';
+                                          << expr->eval() << '\n';
                         }
                 }
                 catch (const LexError &error) {

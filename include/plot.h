@@ -12,7 +12,7 @@ public:
 	explicit PlotError(const std::string &msg) : std::runtime_error(msg) {}
 };
 
-void plot_async(std::string &input, const FunctionTable &functions, const Variables &variables);
+void plot_async(std::string &input);
 void plot_wait();
 
 #endif
