@@ -7,10 +7,10 @@
 
 #include "ast.h"
 
-// Erro do parser
+// erro do parser
 class ParseError : public std::runtime_error {
 private:
-        std::size_t position;   // Posição do token
+        std::size_t position;   // posição do token
 public:
         ParseError(const std::string &msg, std::size_t position)
                 : std::runtime_error(msg), position(position) {}

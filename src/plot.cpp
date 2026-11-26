@@ -13,13 +13,13 @@
 #include <utility>
 #include <vector>
 
-// Comando :plot já analisado
+// parãmetros do comando :plot
 struct PlotCommand {
-        std::string func;               // Nome da função
-        double inicio;                  // Início do intervalo
-        double fim;                     // Fim do intervalo
-        int particoes;                  // Número de partições do intervalo
-        std::string arquivo;            // Arquivo de saída
+        std::string func;               // nome da função
+        double inicio;                  // início do intervalo
+        double fim;                     // fim do intervalo
+        int particoes;                  // número de partições do intervalo
+        std::string arquivo;            // arquivo de saída
 };
 
 static const int PARTICOES_PADRAO = 100;
@@ -39,13 +39,13 @@ static std::string trim(const std::string &s);
 
 void plot_async(std::string &input)
 {
-        // Sintaxe e avaliação na thread principal,
+        // sintaxe e avaliação na thread principal,
         // assim os erros chegam até a command()
 
         PlotCommand cmd = plot_parse(input);
         std::vector<double> ys = plot_sample(cmd);
 
-        // Espera o desenho anterior e dispara o novo
+        // espera o desenho anterior e dispara o novo
 
         plot_wait();
         plot_thread = std::thread(plot_image, std::move(cmd), std::move(ys));
@@ -62,7 +62,7 @@ static PlotCommand plot_parse(const std::string &input)
         // :plot f inicio..fim..particoes arquivo.png
         // :plot f inicio..fim "arquivo.png"
 
-        // O arquivo é o último elemento, o intervalo é o penúltimo
+        // o arquivo é o último elemento, o intervalo é o penúltimo
         // e o que sobra no início é a função f
 
         const char *uso = "uso: :plot f inicio..fim[..particoes] arquivo.png";
@@ -79,7 +79,7 @@ static PlotCommand plot_parse(const std::string &input)
 
         PlotCommand cmd;
 
-        // Arquivo
+        // arquivo
 
         if (resto.back() == '"') {
                 if (resto.size() < 2)
@@ -108,7 +108,7 @@ static PlotCommand plot_parse(const std::string &input)
         if (cmd.arquivo.empty())
                 throw PlotError("Nome de arquivo vazio");
 
-        // Intervalo
+        // intervalo
 
         size_t sep = resto.find_last_of(" \t");
 
@@ -117,7 +117,7 @@ static PlotCommand plot_parse(const std::string &input)
 
         std::string intervalo = resto.substr(sep + 1);
 
-        // Função
+        // função
 
         cmd.func = trim(resto.substr(0, sep));
 
@@ -152,7 +152,7 @@ static PlotCommand plot_parse(const std::string &input)
         if (cmd.inicio >= cmd.fim)
                 throw PlotError("O início deve ser menor que o fim");
 
-        // Função cadastrada e com um único parâmetro
+        // função cadastrada e com um único parâmetro
 
         if (!functions.contains(cmd.func))
                 throw PlotError("Função desconhecida: '" + cmd.func + "'");
@@ -165,7 +165,7 @@ static PlotCommand plot_parse(const std::string &input)
 
 static std::vector<double> plot_sample(const PlotCommand &cmd)
 {
-        // Avalia f nos pontos da partição
+        // avalia f nos pontos da partição
 
         const FunctionTable &functions = FunctionTable::instance();
 
@@ -180,7 +180,7 @@ static std::vector<double> plot_sample(const PlotCommand &cmd)
                 try {
                         ys.push_back(functions.call(cmd.func, {x}));
                 } catch (const EvalError &) {
-                        // Divisão por zero ou fora do domínio: vira lacuna na curva
+                        // divisão por zero ou fora do domínio: vira lacuna na curva
                         ys.push_back(NAN);
                 }
         }
@@ -190,14 +190,13 @@ static std::vector<double> plot_sample(const PlotCommand &cmd)
 
 static void plot_image(PlotCommand cmd, std::vector<double> ys)
 {
-        // Executa na thread paralela: só usa os valores recebidos por cópia
-        // (nunca acessa a FunctionTable)
+        // executa na thread paralela: só usa os valores recebidos por cópia
 
         const int largura = 800;
         const int altura = 600;
         const int margem = 40;
 
-        // Intervalo vertical, ignorando valores não finitos
+        // intervalo vertical, ignorando valores não finitos
 
         double ymin = INFINITY, ymax = -INFINITY;
 
@@ -208,12 +207,12 @@ static void plot_image(PlotCommand cmd, std::vector<double> ys)
                 }
         }
 
-        if (ymin > ymax) {              // Nenhum valor válido
+        if (ymin > ymax) {
                 ymin = -1;
                 ymax = 1;
         }
 
-        if (ymin == ymax) {             // Função constante
+        if (ymin == ymax) {
                 ymin -= 1;
                 ymax += 1;
         }
@@ -226,7 +225,7 @@ static void plot_image(PlotCommand cmd, std::vector<double> ys)
                 return;
         }
 
-        // Conversão dos índices e valores para coordenadas da imagem
+        // conversão dos índices e valores para coordenadas da imagem
 
         auto px = [&](int i) {
                 return (float)(margem + (largura - 2.0 * margem) * i / cmd.particoes);
@@ -241,13 +240,13 @@ static void plot_image(PlotCommand cmd, std::vector<double> ys)
 
         DrawRectangleLines(margem, margem, largura - 2 * margem, altura - 2 * margem, LIGHTGRAY);
 
-        // Eixo y = 0, quando visível
+        // eixo y
 
         if (ymin < 0 && ymax > 0)
                 DrawLineV(Vector2{(float)margem, py(0)},
                           Vector2{(float)(largura - margem), py(0)}, GRAY);
 
-        // Curva
+        // curva
 
         for (size_t i = 1; i < ys.size(); i++) {
                 if (std::isfinite(ys[i - 1]) && std::isfinite(ys[i]))
@@ -264,11 +263,8 @@ static void plot_image(PlotCommand cmd, std::vector<double> ys)
         CloseWindow();
 }
 
-static double eval_limite(const std::string &s, const char *nome)
+double eval_limite(const std::string &s, const char *nome)
 {
-        // Avalia um limite do intervalo com o parser e o eval_vars do interpretador
-        // Aceita expressões sem espaços: pi, 2*pi, -pi/2, sqrt(2), ...
-
         if (trim(s).empty())
                 throw PlotError(std::string("Valor faltante para ") + nome);
 
@@ -298,7 +294,7 @@ static double eval_limite(const std::string &s, const char *nome)
         return v;
 }
 
-static int parse_particoes(const std::string &s)
+int parse_particoes(const std::string &s)
 {
         if (s.empty() || s.find_first_not_of("0123456789") != std::string::npos)
                 throw PlotError("As partições devem ser um inteiro positivo: '" + s + "'");

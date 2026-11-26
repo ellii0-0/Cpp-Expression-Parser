@@ -17,14 +17,12 @@ inline const std::string save_path = "functions.txt";
 
 class FunctionSaver {
 public:
-        // Única instância (criada no primeiro uso, gravando em save_path)
         static FunctionSaver &instance()
         {
                 static FunctionSaver saver(save_path);
                 return saver;
         }
 
-        // Singleton: proíbe cópia e movimentação
         FunctionSaver(const FunctionSaver &) = delete;
         FunctionSaver &operator=(const FunctionSaver &) = delete;
         FunctionSaver(FunctionSaver &&) = delete;
@@ -39,8 +37,6 @@ public:
                 cv_.notify_one();
         }
 
-        // Grava o que está pendente e apaga o arquivo.
-        // Devolve true se o arquivo foi apagado.
         bool erase()
         {
                 namespace fs = std::filesystem;

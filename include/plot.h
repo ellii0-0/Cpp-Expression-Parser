@@ -7,6 +7,7 @@
 #include "ast.h"
 #include "eval.h"
 
+// Exceção do Plot
 class PlotError : public std::runtime_error {
 public:
 	explicit PlotError(const std::string &msg) : std::runtime_error(msg) {}
