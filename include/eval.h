@@ -47,15 +47,21 @@ public:
         // Valida e guarda uma cópia independente da árvore.
         void add(const FuncDef &definition);
 
+        // Lida com chamadas de nós Call
         double call(const std::string &name,
                     const std::vector<double> &args) const;
+
+        // Limpa os unordered_maps e chama init()
+        void reset();
 
         std::unordered_map<std::string, Function>::const_iterator begin() const;
         std::unordered_map<std::string, Function>::const_iterator end() const;
 
 private:
-        // Funções matemáticas fixas e constantes pi e e
-        FunctionTable();
+        FunctionTable() { init(); };
+
+        // Cadastra as funções e constantes nativas
+        void init();
 
         std::unordered_map<std::string, Function> functions;
         Variables vars;

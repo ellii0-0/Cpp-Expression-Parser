@@ -59,7 +59,7 @@ ExprPtr clone(const Expr &expr)
 
 } // namespace
 
-FunctionTable::FunctionTable()
+void FunctionTable::init()
 {
         vars["pi"] = 3.14159265358979323846;
         vars["e"] = 2.71828182845904523536;
@@ -100,6 +100,13 @@ FunctionTable::FunctionTable()
                         return std::atan2(args[0], args[1]);
                 }, nullptr
         });
+}
+
+void FunctionTable::reset()
+{
+        functions.clear();
+        vars.clear();
+        init();
 }
 
 FunctionTable &FunctionTable::instance()

@@ -6,12 +6,14 @@
 
 #include "commands.h"
 #include "eval.h"
+#include "persistencia.h"
 #include "plot.h"
 
 bool command(std::string &input)
 {
         FunctionTable &functions = FunctionTable::instance();
         Variables &variables = functions.variables();
+        FunctionSaver &saver = FunctionSaver::instance();
 
         if (input == ":sair") {
                 return true;
@@ -63,6 +65,7 @@ bool command(std::string &input)
         } else if (input == ":ajuda") {
                 std::cout << "Comandos disponíveis:\n";
                 std::cout << "  :ajuda   - Mostra esta mensagem de ajuda\n";
+                std::cout << "  :reset   - Remove todas as funções do usuário\n";
                 std::cout << "  :limpar  - Limpa a tela\n";
                 std::cout << "  :listar  - Lista funções e variáveis cadastradas\n";
                 std::cout << "  :sair    - Encerra o programa\n\n";
@@ -70,6 +73,12 @@ bool command(std::string &input)
                 std::cout << "Salvar plots:\n";
                 std::cout << "  :plot [unária] [início]..[fim](..[partições])? [caminho]\n";
 
+                return false;
+        } else if (input == ":reset") {
+                plot_wait();
+                functions.reset();
+                saver.erase();
+                std::cout << "Funções e variáveis restauradas.\n";
                 return false;
         } else if (input.compare(0, 5, ":plot") == 0 && input.size() > 5 &&
 	           isspace(input[5])) {

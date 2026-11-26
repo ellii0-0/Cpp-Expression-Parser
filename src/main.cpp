@@ -10,7 +10,6 @@
 #include <iostream>
 #include <string>
 
-
 int main()
 {
         SetTraceLogLevel(LOG_NONE);     // desativa o console da raylib
@@ -19,9 +18,8 @@ int main()
         std::string input;
 
         // carrega as funções salvas antes de criar o saver,
-        const std::string save_path = "functions.txt";
         load_functions(save_path);
-        FunctionSaver saver(save_path);
+        FunctionSaver &saver = FunctionSaver::instance();
 
         std::cout << "Digite \":ajuda\" para ver os comandos disponíveis.\n";
 
