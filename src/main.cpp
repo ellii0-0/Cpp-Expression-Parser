@@ -3,13 +3,18 @@
 #include "lexer.h"
 #include "parser.h"
 #include "persistencia.h"
+#include "plot.h"
+#include "raylib.h"
 
 #include <iomanip>
 #include <iostream>
 #include <string>
 
+
 int main()
 {
+        SetTraceLogLevel(LOG_NONE);     // desativa o console da raylib
+
         FunctionTable functions;
         std::string input;
 
@@ -73,5 +78,8 @@ int main()
                 }
         }
 
-        // ao sair do escopo, o destrutor de saver espera a thread
+
+        plot_wait();
+
+        return 0;
 }

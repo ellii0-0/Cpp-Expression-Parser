@@ -1,36 +1,48 @@
-PROJECT_NAME = build
-CXX = g++
+# ---------- Configuração ----------
+RAYLIB_PATH ?= C:/raylib-6.2
 
-ifeq ($(BUILD_MODE), DEBUG)
-	ifeq ($(ASAN), 1)
-	 	CFLAGS += -fsanitize=address -g -fno-omit-frame-pointer -O0
-	else
-		CFLAGS += -g -O0
-	endif
+CXX      = g++
+CXXFLAGS = -std=c++17 -Wall -O1 -Iinclude -I$(RAYLIB_PATH)/src
+LDFLAGS  = -L$(RAYLIB_PATH)/src
+
+RM_OBJ = rm -rf obj
+RM_BIN = rm -f $(TARGET)
+MKDIR  = mkdir -p obj
+RUN    = ./$(TARGET)
+
+ifeq ($(OS),Windows_NT)
+    RAYLIB_PATH ?= C:/raylib-6.2
+    CXXFLAGS = -std=c++17 -Wall -O1 -Iinclude -I$(RAYLIB_PATH)/src
+    LDFLAGS  = -L$(RAYLIB_PATH)/src
+    LDLIBS   = -lraylib -lopengl32 -lgdi32 -lwinmm
+    TARGET   = build.exe
 else
-	CFLAGS += -s -O1 -Wall -Wextra -Wpedantic -Werror
+    CXXFLAGS = -std=c++17 -Wall -O1 -Iinclude
+    LDFLAGS  =
+    LDLIBS   = -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+    TARGET   = build
 endif
-
-INCLUDE_PATHS = -Iinclude
-SRC_DIR = src
-OBJ_DIR = obj
 
 SRC  = $(wildcard src/*.cpp)
 OBJS = $(patsubst src/%.cpp,obj/%.o,$(SRC))
 
-all: $(PROJECT_NAME)
+.PHONY: all run clean
 
-$(OBJ_DIR):
-	mkdir -p obj
+# ---------- Alvos ----------
+all: $(TARGET)
 
-$(PROJECT_NAME): $(OBJS)
-	$(CXX) -o $(PROJECT_NAME) $(OBJS) $(CFLAGS) $(INCLUDE_PATHS)
+$(TARGET): $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(LDLIBS)
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) -c $< -o $@ $(CFLAGS) $(INCLUDE_PATHS)
+obj/%.o: src/%.cpp
+	@$(MKDIR)
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
+# Compila (se preciso) e executa
+run: $(TARGET)
+	$(RUN)
+
+# Remove objetos e executável
 clean:
-	rm -rf obj
-	rm -f $(PROJECT_NAME)
-
-.PHONY: all clean
+	-$(RM_OBJ)
+	-$(RM_BIN)
