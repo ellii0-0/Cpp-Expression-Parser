@@ -6,8 +6,9 @@
 
 #include "commands.h"
 #include "eval.h"
+#include "plot.h"
 
-bool command(const std::string &input, FunctionTable &functions, Variables &variables)
+bool command(std::string &input, FunctionTable &functions, Variables &variables)
 {
         if (input == ":sair") {
                 return true;
@@ -63,7 +64,15 @@ bool command(const std::string &input, FunctionTable &functions, Variables &vari
                 std::cout << "  :limpar - Limpa a tela\n";
                 std::cout << "  :ajuda  - Mostra esta mensagem de ajuda\n";
                 return false;
-        } else {
+        } else if (input.compare(0, 5, ":plot") == 0 && input.size() > 5 &&
+	           isspace(input[5])) {
+		try {
+			plot_async(input, functions, variables);
+		} catch (const PlotError &e) {
+			std::cerr << "Erro de sintaxe em :plot: " << e.what() << '\n';
+		}
+		return false;
+	} else {
                 std::cerr << "Comando desconhecido: " << input << '\n';
                 return false;
         }

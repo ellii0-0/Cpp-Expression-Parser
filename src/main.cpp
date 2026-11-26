@@ -2,13 +2,18 @@
 #include "eval.h"
 #include "lexer.h"
 #include "parser.h"
+#include "plot.h"
+#include "raylib.h"
 
 #include <iomanip>
 #include <iostream>
 #include <string>
 
+
 int main()
 {
+        SetTraceLogLevel(LOG_NONE);     // desativa o console da raylib
+
         FunctionTable functions;
         std::string input;
 
@@ -60,4 +65,8 @@ int main()
                         std::cerr << "Erro de avaliação: " << error.what() << '\n';
                 }
         }
+
+        plot_wait();
+
+        return 0;
 }

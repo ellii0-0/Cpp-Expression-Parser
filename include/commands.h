@@ -3,6 +3,6 @@
 
 #include "ast.h"
 
-bool command(const std::string &input, FunctionTable &functions, Variables &variables);
+bool command(std::string &input, FunctionTable &functions, Variables &variables);
 
 #endif
