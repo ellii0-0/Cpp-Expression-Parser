@@ -9,7 +9,7 @@ void load_functions(const std::string &path, FunctionTable &functions,
         std::ifstream in(path);
 
         if (!in)
-                return;         // first run: no file yet, nothing to load
+                return;     
 
         std::string line;
         std::size_t line_number = 0;

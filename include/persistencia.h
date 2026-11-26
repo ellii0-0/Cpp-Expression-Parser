@@ -10,12 +10,12 @@
 #include <string>
 #include <thread>
 
-// Writes lines to a file from a background thread.
+
 class FunctionSaver {
 public:
         explicit FunctionSaver(const std::string &path)
-                : file_(path, std::ios::app),             // append: never wipes old data
-                  worker_(&FunctionSaver::run, this) {}   // thread starts here
+                : file_(path, std::ios::app),             
+                  worker_(&FunctionSaver::run, this) {}  
 
         ~FunctionSaver()
         {
@@ -24,13 +24,12 @@ public:
                         stop_ = true;
                 }
                 cv_.notify_one();
-                worker_.join();         // waits until the queue is fully written
+                worker_.join();         
         }
 
         FunctionSaver(const FunctionSaver &) = delete;
         FunctionSaver &operator=(const FunctionSaver &) = delete;
 
-        // Called from the main thread.
         void save(const std::string &line)
         {
                 {
@@ -52,7 +51,7 @@ private:
                                 std::string line = std::move(queue_.front());
                                 queue_.pop();
 
-                                lock.unlock();          // no lock held during file I/O
+                                lock.unlock();      
                                 file_ << line << '\n';
                                 file_.flush();
                                 lock.lock();
@@ -68,10 +67,8 @@ private:
         std::mutex mutex_;
         std::condition_variable cv_;
         bool stop_ = false;
-        std::thread worker_;    // must stay LAST: it starts using the members above
+        std::thread worker_;   
 };
-
-// Reads the file and registers every function in it.
 void load_functions(const std::string &path, FunctionTable &functions,
                     Variables &variables);
 
