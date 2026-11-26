@@ -223,7 +223,7 @@ double FunctionTable::call(const std::string &name,
 double Expr::eval() const
 {
         FunctionTable &functions = FunctionTable::instance();
-        Variables & vars = functions.variables();
+        Variables &vars = functions.variables();
         
         return eval_vars(vars);
 }
