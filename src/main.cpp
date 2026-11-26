@@ -2,6 +2,7 @@
 #include "eval.h"
 #include "lexer.h"
 #include "parser.h"
+#include "persistencia.h"
 
 #include <iomanip>
 #include <iostream>
@@ -17,21 +18,28 @@ int main()
         variables["pi"] = 3.14159265358979323846;
         variables["e"] = 2.71828182845904523536;
 
+        // carrega as funções salvas antes de criar o saver,
+        const std::string save_path = "functions.txt";
+        load_functions(save_path, functions, variables);
+        FunctionSaver saver(save_path);
+
         std::cout << "Digite \":ajuda\" para ver os comandos disponíveis.\n";
 
         while (true) {
                 std::cout << "f> ";
-                std::getline(std::cin, input);
+
+                if (!std::getline(std::cin, input))
+                        break;
 
                 if (input[0] == ':') {
                         bool exit = command(input, functions, variables);
-        
+
                         if (exit)
                                 break;
                         else
                                 continue;
                 }
-                        
+
                 if (input.find_first_not_of(" \t\r\n") == std::string::npos)
                         continue;
 
@@ -40,6 +48,10 @@ int main()
 
                         if (const auto *definition = dynamic_cast<const FuncDef *>(expr.get())) {
                                 functions.add(*definition, variables);
+
+                                // Só chega aqui se add() não lançou exceção
+                                saver.save(input);
+
                                 std::cout << "Função cadastrada: ";
                                 definition->print();
                                 std::cout << '\n';
@@ -60,4 +72,6 @@ int main()
                         std::cerr << "Erro de avaliação: " << error.what() << '\n';
                 }
         }
+
+        // ao sair do escopo, o destrutor de saver espera a thread
 }
